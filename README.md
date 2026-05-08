@@ -1,1 +1,141 @@
-# Miniigri222
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мини-игра: Поймай квадрат!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            background-color: white;
+            border: 3px solid #333;
+            border-radius: 10px;
+            cursor: crosshair;
+        }
+
+        #target {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #ff4757;
+            border-radius: 8px;
+            display: none;
+            transition: transform 0.1s;
+        }
+
+        #target:active {
+            transform: scale(0.9);
+        }
+
+        .stats {
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        button {
+            padding: 10px 25px;
+            font-size: 18px;
+            background-color: #2ed573;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #26af5f;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stats">
+        Счет: <span id="score">0</span> | Время: <span id="time">30</span>с
+    </div>
+
+    <div id="game-container">
+        <div id="target"></div>
+    </div>
+
+    <br>
+    <button id="start-btn">Начать игру</button>
+
+    <script>
+        const scoreElement = document.getElementById('score');
+        const timeElement = document.getElementById('time');
+        const target = document.getElementById('target');
+        const container = document.getElementById('game-container');
+        const startBtn = document.getElementById('start-btn');
+
+        let score = 0;
+        let timeLeft = 30;
+        let gameActive = false;
+        let timerInterval;
+
+        function moveTarget() {
+            const maxX = container.clientWidth - target.clientWidth;
+            const maxY = container.clientHeight - target.clientHeight;
+
+            const randomX = Math.floor(Math.random() * maxX);
+            const randomY = Math.floor(Math.random() * maxY);
+
+            target.style.left = randomX + 'px';
+            target.style.top = randomY + 'px';
+        }
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            gameActive = true;
+            scoreElement.textContent = score;
+            timeElement.textContent = timeLeft;
+            startBtn.style.display = 'none';
+            target.style.display = 'block';
+
+            moveTarget();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timeElement.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            target.style.display = 'none';
+            startBtn.style.display = 'inline-block';
+            alert('Игра окончена! Ваш результат: ' + score);
+        }
+
+        target.addEventListener('mousedown', () => {
+            if (gameActive) {
+                score++;
+                scoreElement.textContent = score;
+                moveTarget();
+            }
+        });
+
+        startBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
