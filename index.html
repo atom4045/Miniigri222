@@ -2,140 +2,140 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мини-игра: Поймай квадрат!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Subnautica 2D Mini</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f2f5;
-            overflow: hidden;
-        }
-
-        #game-container {
-            position: relative;
-            width: 600px;
-            height: 400px;
-            background-color: white;
-            border: 3px solid #333;
-            border-radius: 10px;
-            cursor: crosshair;
-        }
-
-        #target {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background-color: #ff4757;
-            border-radius: 8px;
-            display: none;
-            transition: transform 0.1s;
-        }
-
-        #target:active {
-            transform: scale(0.9);
-        }
-
-        .stats {
-            margin-bottom: 20px;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        button {
-            padding: 10px 25px;
-            font-size: 18px;
-            background-color: #2ed573;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #26af5f;
-        }
+        body { margin: 0; overflow: hidden; background: #001a33; font-family: sans-serif; touch-action: none; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 10px; left: 10px; color: #00d4ff; pointer-events: none; }
+        .bar { width: 200px; height: 15px; background: #333; border: 2px solid #fff; border-radius: 10px; }
+        #oxygen-level { width: 100%; height: 100%; background: #00d4ff; transition: 0.1s; border-radius: 5px; }
+        #joystick-area { position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
+        #joystick-stick { position: absolute; width: 50px; height: 50px; background: rgba(255,255,255,0.5); border-radius: 50%; top: 35px; left: 35px; }
     </style>
 </head>
 <body>
 
-    <div class="stats">
-        Счет: <span id="score">0</span> | Время: <span id="time">30</span>с
+    <div id="ui">
+        <div>КИСЛОРОД</div>
+        <div class="bar"><div id="oxygen-level"></div></div>
+        <div style="margin-top: 10px;">РЕСУРСЫ: <span id="res-count">0</span></div>
     </div>
 
-    <div id="game-container">
-        <div id="target"></div>
-    </div>
+    <div id="joystick-area"><div id="joystick-stick"></div></div>
 
-    <br>
-    <button id="start-btn">Начать игру</button>
+    <canvas id="gameCanvas"></canvas>
 
     <script>
-        const scoreElement = document.getElementById('score');
-        const timeElement = document.getElementById('time');
-        const target = document.getElementById('target');
-        const container = document.getElementById('game-container');
-        const startBtn = document.getElementById('start-btn');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const oxygenBar = document.getElementById('oxygen-level');
+        const resDisplay = document.getElementById('res-count');
 
-        let score = 0;
-        let timeLeft = 30;
-        let gameActive = false;
-        let timerInterval;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        function moveTarget() {
-            const maxX = container.clientWidth - target.clientWidth;
-            const maxY = container.clientHeight - target.clientHeight;
+        let player = { x: canvas.width/2, y: canvas.height/2, size: 20, ox: 100, res: 0 };
+        let items = [];
+        let joystick = { active: false, x: 0, y: 0, moveX: 0, moveY: 0 };
 
-            const randomX = Math.floor(Math.random() * maxX);
-            const randomY = Math.floor(Math.random() * maxY);
-
-            target.style.left = randomX + 'px';
-            target.style.top = randomY + 'px';
+        // Создаем ресурсы (металлолом)
+        function spawnItem() {
+            items.push({ x: Math.random() * canvas.width, y: Math.random() * (canvas.height - 100) + 50, size: 10 });
         }
+        for(let i=0; i<10; i++) spawnItem();
 
-        function startGame() {
-            score = 0;
-            timeLeft = 30;
-            gameActive = true;
-            scoreElement.textContent = score;
-            timeElement.textContent = timeLeft;
-            startBtn.style.display = 'none';
-            target.style.display = 'block';
+        // Управление (Тачскрин)
+        const area = document.getElementById('joystick-area');
+        const stick = document.getElementById('joystick-stick');
 
-            moveTarget();
+        area.addEventListener('touchstart', (e) => { joystick.active = true; });
+        window.addEventListener('touchmove', (e) => {
+            if (!joystick.active) return;
+            let touch = e.touches[0];
+            let rect = area.getBoundingClientRect();
+            let centerX = rect.left + rect.width / 2;
+            let centerY = rect.top + rect.height / 2;
+            
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            let dist = Math.min(Math.sqrt(dx*dx + dy*dy), 60);
+            let angle = Math.atan2(dy, dx);
 
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                timeElement.textContent = timeLeft;
+            joystick.moveX = Math.cos(angle) * (dist / 60);
+            joystick.moveY = Math.sin(angle) * (dist / 60);
 
-                if (timeLeft <= 0) {
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function endGame() {
-            gameActive = false;
-            clearInterval(timerInterval);
-            target.style.display = 'none';
-            startBtn.style.display = 'inline-block';
-            alert('Игра окончена! Ваш результат: ' + score);
-        }
-
-        target.addEventListener('mousedown', () => {
-            if (gameActive) {
-                score++;
-                scoreElement.textContent = score;
-                moveTarget();
-            }
+            stick.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
         });
 
-        startBtn.addEventListener('click', startGame);
+        window.addEventListener('touchend', () => {
+            joystick.active = false;
+            joystick.moveX = 0; joystick.moveY = 0;
+            stick.style.transform = `translate(0,0)`;
+        });
+
+        function update() {
+            // Движение
+            player.x += joystick.moveX * 4;
+            player.y += joystick.moveY * 4;
+
+            // Кислород: тратится внизу, пополняется у поверхности (сверху)
+            if (player.y < 50) {
+                player.ox = Math.min(100, player.ox + 1);
+            } else {
+                player.ox -= 0.05;
+            }
+
+            if (player.ox <= 0) {
+                alert("Кислород закончился! Собрано ресурсов: " + player.res);
+                player.ox = 100; player.res = 0; player.x = canvas.width/2; player.y = canvas.height/2;
+            }
+
+            oxygenBar.style.width = player.ox + "%";
+
+            // Сбор ресурсов
+            items.forEach((item, index) => {
+                let dx = player.x - item.x;
+                let dy = player.y - item.y;
+                if (Math.sqrt(dx*dx + dy*dy) < player.size + item.size) {
+                    items.splice(index, 1);
+                    player.res++;
+                    resDisplay.textContent = player.res;
+                    spawnItem();
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Поверхность (вода)
+            ctx.fillStyle = "#004e92";
+            ctx.fillRect(0, 0, canvas.width, 50);
+
+            // Ресурсы
+            ctx.fillStyle = "#aaa";
+            items.forEach(item => {
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, item.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            // Игрок (Батискаф)
+            ctx.fillStyle = "#ffcc00";
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = "#000"; // Иллюминатор
+            ctx.beginPath();
+            ctx.arc(player.x + 5, player.y, 5, 0, Math.PI*2);
+            ctx.fill();
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        draw();
     </script>
 </body>
 </html>
