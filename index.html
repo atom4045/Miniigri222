@@ -3,163 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Subnautica: Ice & Fire</title>
+    <title>Hollow Knight 2D Mobile</title>
     <style>
-        body { margin:0; overflow:hidden; background:#001a33; font-family:sans-serif; touch-action:none; color:#fff; user-select:none; }
-        #ui { position:absolute; top:10px; left:10px; z-index:5; text-shadow:1px 1px 2px #000; pointer-events:none;}
-        .bar { width:150px; height:12px; border:2px solid #fff; border-radius:6px; background:#333; margin-bottom:5px;}
-        #ox { width:100%; height:100%; background:#00d4ff; transition:0.1s;}
-        .inv { background:rgba(0,0,0,0.6); padding:5px; border-radius:5px; font-size:12px; pointer-events:auto;}
-        .btn { width:60px; height:60px; border-radius:50%; position:absolute; font-weight:bold; border:2px solid #fff; z-index:10; display:flex; align-items:center; justify-content:center;}
-        #joy-a { bottom:20px; left:20px; width:100px; height:100px; background:rgba(255,255,255,0.1); border-radius:50%; position:absolute; }
-        #joy-s { width:40px; height:40px; background:rgba(255,255,255,0.5); border-radius:50%; position:absolute; top:30px; left:30px; }
-        #btn-pda { bottom:20px; right:20px; background:#f39c12; color:#000; cursor:pointer;}
-        #btn-atk { bottom:90px; right:20px; background:#e74c3c; display:none; cursor:pointer;}
-        #menu { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,25,50,0.95); padding:10px; border:2px solid #0ff; display:none; border-radius:10px; z-index:20; width:280px; max-height:80vh; overflow-y:auto;}
-        .c-item { border-bottom:1px solid #444; padding:5px 0; font-size:12px;}
-        .c-item button { float:right; background:#2ecc71; border:none; padding:5px; border-radius:3px; cursor:pointer;}
-        #horror { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:none; justify-content:center; align-items:center; z-index:100; }
+        body { margin: 0; overflow: hidden; background: #050508; font-family: 'Georgia', serif; touch-action: none; user-select: none; }
+        canvas { display: block; filter: contrast(1.1) brightness(0.9); }
+        #ui { position: absolute; top: 20px; left: 20px; display: flex; gap: 10px; pointer-events: none; }
+        .mask { width: 30px; height: 35px; background: #fff; clip-path: polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
+        .btn { width: 70px; height: 70px; background: rgba(255,255,255,0.1); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 12px; }
+        .joy-area { width: 120px; height: 120px; background: rgba(255,255,255,0.05); border-radius: 50%; position: relative; }
+        .stick { width: 50px; height: 50px; background: #fff; border-radius: 50%; position: absolute; top: 35px; left: 35px; opacity: 0.6; }
+        #death-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
     </style>
 </head>
 <body>
-    <div id="ui">
-        O2 <div class="bar"><div id="ox"></div></div>
-        <div id="warn" style="color:#e74c3c; display:none; font-weight:bold;">⚠ АКУЛА!</div>
-        <div class="inv">
-            ⚪Мет:<span id="m">0</span> 🟢Квц:<span id="q">0</span> 🔴Тит:<span id="t">0</span><br>
-            🟡Зол:<span id="g">0</span> 💎Лёд:<span id="c">0</span>
-            <button onclick="port()" style="margin-top:5px;width:100%;background:#00d4ff;border:none;padding:5px;cursor:pointer;">Телепорт: Ледник (10🟡, 10🔴)</button>
+    <div id="ui"><div class="mask"></div><div class="mask"></div><div class="mask"></div></div>
+    <div id="death-screen"><h1>ТЫ ПАЛ</h1><button onclick="location.reload()">ВОЗРОДИТЬСЯ</button></div>
+    
+    <div class="controls">
+        <div class="joy-area" id="ja"><div class="stick" id="js"></div></div>
+        <div style="display: flex; gap: 15px;">
+            <div class="btn" id="b-dash">ДЭШ</div>
+            <div class="btn" id="b-atk" style="background: rgba(255,255,255,0.2)">АТАКА</div>
+            <div class="btn" id="b-jump">ПРЫЖОК</div>
         </div>
     </div>
-    <div id="joy-a"><div id="joy-s"></div></div>
-    <div class="btn" id="btn-pda" onclick="document.getElementById('menu').style.display='block'">ПДА</div>
-    <div class="btn" id="btn-atk" onclick="atk()">БИТЬ</div>
+    <canvas id="game"></canvas>
+        <script>
+        const canvas = document.getElementById('game'); const ctx = canvas.getContext('game');
+        const cv = canvas; const cx = canvas.getContext('2d');
+        cv.width = window.innerWidth; cv.height = window.innerHeight;
 
-    <div id="menu">
-        <h3 style="margin:0 0 10px 0;color:#0ff;">Чертежи</h3>
-        <div class="c-item"><b>Копьё</b> <small>⚪5,🟢5</small> <button onclick="cr('w1')">Создать</button></div>
-        <div class="c-item"><b>Авто-Пушка</b> <small>🔴10,🟡5</small> <button onclick="cr('w2')">Создать</button></div>
-        <div class="c-item"><b>Ракетница</b> <small>💎10,🟡10</small> <button onclick="cr('w3')">Создать</button></div>
-        <div class="c-item"><b>Обогреватель</b> <small>🔴5,🟡2</small> <button onclick="cr('ht')">Создать</button></div>
-        <button onclick="this.parentElement.style.display='none'" style="width:100%;margin-top:10px;padding:8px;background:#e74c3c;color:#fff;border:none;">Закрыть</button>
-    </div>
-    <div id="horror"><img src="https://upload.wikimedia.org/wikipedia/en/c/c5/Hollow_Knight_Hornet.png" style="width:80%;max-width:300px;"></div>
-    <canvas id="cv"></canvas>
-    <script>
-    const cv = document.getElementById('cv'); const cx = cv.getContext('2d');
-    cv.width = window.innerWidth; cv.height = window.innerHeight;
-    
-    let p = { x:cv.width/2, y:80, ox:100, res:{m:0,q:0,t:0,g:0,c:0}, u:{w:0,ht:0}, bio:0 };
-    let items = [], sharks = [], bullets = [], exps = [];
-    let joy = { a:false, x:0, y:0 }, frames = 0;
-    let sec = { x:10, y:cv.height-60, s:40 };
+        let p = { x: 100, y: 100, w: 30, h: 45, vx: 0, vy: 0, jump: false, side: 1, dash: 0, dashCd: 0, atk: 0, hp: 3 };
+        let platforms = [{x: 0, y: cv.height - 50, w: cv.width * 2, h: 50}, {x: 200, y: cv.height - 150, w: 150, h: 20}, {x: 450, y: cv.height - 250, w: 150, h: 20}];
+        let enemies = [{x: 500, y: cv.height - 80, w: 40, h: 30, vx: 2, alive: true}];
+        let particles = [];
+        let joy = { active: false, x: 0 };
 
-    function rY() { return Math.random()*(cv.height-100)+100; }
-    function spI() {
-        let r=Math.random(), t;
-        if(p.bio==1) t = r>0.7?'c':r>0.4?'t':'m';
-        else t = r>0.9?'g':r>0.6?'t':r>0.3?'q':'m';
-        items.push({ x:Math.random()*(cv.width-20)+10, y:rY(), t:t });
-    }
-    for(let i=0; i<30; i++) spI();
-
-    const ja=document.getElementById('joy-a'), js=document.getElementById('joy-s');
-    ja.ontouchstart=()=>joy.a=true;
-    window.ontouchmove=(e)=>{
-        if(!joy.a)return; let r=ja.getBoundingClientRect(), t=e.touches[0];
-        let dx=t.clientX-(r.left+50), dy=t.clientY-(r.top+50), d=Math.min(Math.hypot(dx,dy),40), a=Math.atan2(dy,dx);
-        joy.x=Math.cos(a)*(d/40); joy.y=Math.sin(a)*(d/40); js.style.transform=`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`;
-    };
-    window.ontouchend=()=>{ joy.a=false; joy.x=0; joy.y=0; js.style.transform='translate(0,0)'; };
-
-    function cr(i){
-        let r=p.res;
-        if(i=='w1'&&r.m>=5&&r.q>=5&&p.u.w<1){ r.m-=5;r.q-=5;p.u.w=1;document.getElementById('btn-atk').style.display='flex'; alert('Копьё готово!');}
-        else if(i=='w2'&&r.t>=10&&r.g>=5&&p.u.w<2){ r.t-=10;r.g-=5;p.u.w=2;document.getElementById('btn-atk').style.display='none'; alert('Пушка установлена!');}
-        else if(i=='w3'&&r.c>=10&&r.g>=10&&p.u.w<3){ r.c-=10;r.g-=10;p.u.w=3; alert('Ракетница установлена!');}
-        else if(i=='ht'&&r.t>=5&&r.g>=2&&!p.u.ht){ r.t-=5;r.g-=2;p.u.ht=1; alert('Обогреватель установлен!');}
-        else alert('Мало ресурсов или уже есть!');
-    }
-    
-    function port(){
-        if(p.bio==0 && p.res.g>=10 && p.res.t>=10){ p.res.g-=10; p.res.t-=10; p.bio=1; items=[]; sharks=[]; for(let i=0;i<30;i++)spI(); alert('Ледник! Тут ОЧЕНЬ холодно!'); }
-        else if(p.bio==1){ p.bio=0; items=[]; sharks=[]; for(let i=0;i<30;i++)spI(); }
-        else alert('Собери 10 Золота и 10 Титана!');
-    }
-
-    function atk(){ if(p.u.w==1){ sharks.forEach((s,i)=>{ if(Math.hypot(p.x-s.x, p.y-s.y)<60) sharks.splice(i,1); }); }}
-
-    function updUI(){
-        ['m','q','t','g','c'].forEach(i=>document.getElementById(i).innerText=p.res[i]);
-        document.getElementById('ox').style.width=Math.max(0,p.ox)+'%';
-        document.getElementById('warn').style.display=sharks.length>0?'block':'none';
-    }
-
-    function draw(){
-        frames++;
-        cx.fillStyle = p.bio==1 ? '#8ab6d6' : '#001a33'; cx.fillRect(0,0,cv.width,cv.height);
-        cx.fillStyle = p.bio==1 ? '#e0f7fa' : '#004e92'; cx.fillRect(0,0,cv.width,70);
-        cx.fillStyle = '#000'; cx.fillRect(sec.x, sec.y, sec.s, sec.s);
-
-        // Спавн акул (раз в 10 сек)
-        if(frames%600==0 && sharks.length<3) sharks.push({ x:Math.random()>0.5?0:cv.width, y:rY() });
-        
-        // Авто-стрельба
-        if(p.u.w>=2 && frames%50==0 && sharks.length>0){
-            let s=sharks[0], a=Math.atan2(s.y-p.y, s.x-p.x);
-            bullets.push({x:p.x, y:p.y, vx:Math.cos(a)*8, vy:Math.sin(a)*8, r:p.u.w==3});
-        }
-
-        // Ресурсы
-        items.forEach((it,i)=>{
-            cx.fillStyle = it.t=='m'?'#bdc3c7':it.t=='q'?'#2ecc71':it.t=='t'?'#e74c3c':it.t=='g'?'#f1c40f':'#00d4ff';
-            cx.beginPath(); cx.arc(it.x, it.y, 6, 0, 7); cx.fill();
-            if(Math.hypot(p.x-it.x, p.y-it.y)<30){ p.res[it.t]++; items.splice(i,1); spI(); updUI(); }
+        // Управление
+        const ja = document.getElementById('ja'); const js = document.getElementById('js');
+        ja.addEventListener('touchstart', (e) => { joy.active = true; });
+        window.addEventListener('touchmove', (e) => {
+            if(!joy.active) return;
+            let r = ja.getBoundingClientRect(); let t = e.touches[0];
+            let dx = t.clientX - (r.left + 60);
+            joy.x = Math.max(-1, Math.min(1, dx / 50));
+            js.style.transform = `translateX(${joy.x * 30}px)`;
+            if(joy.x !== 0) p.side = joy.x > 0 ? 1 : -1;
         });
+        window.addEventListener('touchend', () => { joy.active = false; joy.x = 0; js.style.transform = 'translate(0,0)'; });
 
-        // Пули
-        bullets.forEach((b,i)=>{
-            b.x+=b.vx; b.y+=b.vy;
-            cx.fillStyle='#ff0'; cx.beginPath(); cx.arc(b.x, b.y, b.r?6:3, 0, 7); cx.fill();
-            sharks.forEach((s,si)=>{
-                if(Math.hypot(b.x-s.x, b.y-s.y)<35){ 
-                    bullets.splice(i,1); sharks.splice(si,1); 
-                    if(b.r) exps.push({x:s.x, y:s.y, r:0}); // Взрыв ракеты
+        document.getElementById('b-jump').ontouchstart = () => { if(!p.jump) { p.vy = -15; p.jump = true; } };
+        document.getElementById('b-dash').ontouchstart = () => { if(p.dashCd <= 0) { p.dash = 15; p.dashCd = 40; } };
+        document.getElementById('b-atk').ontouchstart = () => { if(p.atk <= 0) p.atk = 15; };
+
+        function update() {
+            // Движение и физика
+            if(p.dash > 0) { p.vx = p.side * 12; p.dash--; p.vy = 0; } 
+            else { p.vx = joy.x * 6; p.vy += 0.8; }
+            
+            p.x += p.vx; p.y += p.vy;
+            if(p.dashCd > 0) p.dashCd--;
+            if(p.atk > 0) p.atk--;
+
+            // Коллизии с полом
+            p.jump = true;
+            platforms.forEach(plat => {
+                if(p.x < plat.x + plat.w && p.x + p.w > plat.x && p.y + p.h > plat.y && p.y + p.h < plat.y + plat.vy + 20) {
+                    p.y = plat.y - p.h; p.vy = 0; p.jump = false;
                 }
             });
-        });
 
-        // Взрывы
-        exps.forEach((e,i)=>{ e.r+=4; cx.fillStyle='rgba(255,100,0,0.5)'; cx.beginPath(); cx.arc(e.x, e.y, e.r, 0, 7); cx.fill();
-            sharks.forEach((s,si)=>{ if(Math.hypot(e.x-s.x, e.y-s.y)<e.r) sharks.splice(si,1); });
-            if(e.r>90) exps.splice(i,1);
-        });
+            // Враги
+            enemies.forEach(en => {
+                if(!en.alive) return;
+                en.x += en.vx;
+                if(en.x > 600 || en.x < 400) en.vx *= -1;
+                // Получение урона игроком
+                if(Math.abs(p.x - en.x) < 30 && Math.abs(p.y - en.y) < 30 && p.dash <= 0) {
+                    p.hp--; p.x -= p.side * 50; if(p.hp <= 0) document.getElementById('death-screen').style.display = 'flex';
+                }
+                // Атака игрока
+                if(p.atk > 0 && Math.abs((p.x + p.side * 40) - en.x) < 40 && Math.abs(p.y - en.y) < 40) {
+                    en.alive = false;
+                    for(let i=0; i<10; i++) particles.push({x: en.x, y: en.y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, t: 30});
+                }
+            });
+        }
 
-        // Акулы
-        sharks.forEach((s,i)=>{
-            let a=Math.atan2(p.y-s.y, p.x-s.x); s.x+=Math.cos(a)*1.5; s.y+=Math.sin(a)*1.5;
-            cx.fillStyle='#555'; cx.fillRect(s.x-15, s.y-5, 30, 10);
-            if(Math.hypot(p.x-s.x, p.y-s.y)<25){ p.ox-=30; sharks.splice(i,1); }
-        });
+        function draw() {
+            update();
+            cx.fillStyle = '#050508'; cx.fillRect(0,0,cv.width,cv.height);
+            
+            // Пыль/Частицы
+            cx.fillStyle = 'rgba(255,255,255,0.1)';
+            if(Math.random() > 0.9) particles.push({x: Math.random()*cv.width, y: Math.random()*cv.height, vx: 0.5, vy: 0.5, t: 100});
+            particles.forEach((pt, i) => {
+                pt.x += pt.vx; pt.y += pt.vy; pt.t--;
+                cx.fillRect(pt.x, pt.y, 2, 2);
+                if(pt.t <= 0) particles.splice(i, 1);
+            });
 
-        // Игрок
-        p.x = Math.max(15, Math.min(cv.width-15, p.x+joy.x*5));
-        p.y = Math.max(15, Math.min(cv.height-15, p.y+joy.y*5));
-        
-        let rate = (p.bio==1 && !p.u.ht) ? 0.25 : 0.05; // Холод убивает без обогревателя
-        p.ox = p.y<70 ? Math.min(100, p.ox+1.5) : p.ox-rate;
-        if(p.ox<=0){ alert('Гейм Овер! Ресурсы утеряны.'); p.ox=100; p.y=50; sharks=[]; p.res={m:0,q:0,t:0,g:0,c:0}; }
-        updUI();
+            // Платформы
+            cx.fillStyle = '#1a1a2e';
+            platforms.forEach(plat => cx.fillRect(plat.x, plat.y, plat.w, plat.h));
 
-        // Пасхалка
-        if(p.x<sec.x+40 && p.y>sec.y){ document.getElementById('horror').style.display='flex'; setTimeout(()=>location.reload(), 2000); return; }
+            // Враг
+            enemies.forEach(en => {
+                if(!en.alive) return;
+                cx.fillStyle = '#4a0000'; cx.beginPath(); cx.ellipse(en.x + 20, en.y + 15, 20, 15, 0, 0, 7); cx.fill();
+                cx.fillStyle = '#ff0000'; cx.fillRect(en.x + (en.vx>0?30:5), en.y + 10, 5, 5);
+            });
 
-        cx.fillStyle='#f1c40f'; cx.fillRect(p.x-12, p.y-10, 24, 20); // Лодка
-        if(p.u.w==1){ cx.fillStyle='#fff'; cx.fillRect(p.x, p.y, 25, 2); } // Копье торчит
-        
-        requestAnimationFrame(draw);
-    }
-    draw();
-</script>
+            // Игрок (Рыцарь)
+            cx.save();
+            cx.translate(p.x + p.w/2, p.y + p.h/2);
+            if(p.dash > 0) cx.shadowBlur = 15; cx.shadowColor = "#fff";
+            cx.fillStyle = "#fff"; // Голова
+            cx.beginPath(); cx.ellipse(0, -10, 15, 18, 0, 0, 7); cx.fill();
+            cx.fillStyle = "#000"; // Глаза
+            cx.fillRect(-8, -12, 4, 8); cx.fillRect(4, -12, 4, 8);
+            cx.fillStyle = "#333"; // Плащ
+            cx.fillRect(-12, 5, 24, 20);
+            
+            // Анимация удара
+            if(p.atk > 0) {
+                cx.strokeStyle = "rgba(255,255,255,0.8)"; cx.lineWidth = 3;
+                cx.beginPath(); cx.arc(p.side * 30, 0, 30, -1, 1); cx.stroke();
+            }
+            cx.restore();
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
 </body>
 </html>
+
