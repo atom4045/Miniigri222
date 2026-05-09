@@ -3,138 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Subnautica 2D Mini</title>
+    <title>Subnautica 2D Mobile</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #001a33; font-family: sans-serif; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #000810; font-family: sans-serif; touch-action: none; color: white; user-select: none; }
         canvas { display: block; }
-        #ui { position: absolute; top: 10px; left: 10px; color: #00d4ff; pointer-events: none; }
-        .bar { width: 200px; height: 15px; background: #333; border: 2px solid #fff; border-radius: 10px; }
-        #oxygen-level { width: 100%; height: 100%; background: #00d4ff; transition: 0.1s; border-radius: 5px; }
-        #joystick-area { position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); }
-        #joystick-stick { position: absolute; width: 50px; height: 50px; background: rgba(255,255,255,0.5); border-radius: 50%; top: 35px; left: 35px; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        .bar { width: 150px; height: 10px; background: #333; border: 2px solid #fff; border-radius: 5px; }
+        #ox-lvl { width: 100%; height: 100%; background: #00d4ff; }
+        .inv { font-size: 12px; background: rgba(0,0,0,0.5); padding: 5px; margin-top: 5px; border-radius: 5px; }
+        #craft-btn { position: absolute; bottom: 20px; right: 20px; width: 70px; height: 70px; background: #ffcc00; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #fff; }
+        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,20,40,0.9); padding: 20px; border: 2px solid #00d4ff; display: none; text-align: center; }
+        #joy-a { position: absolute; bottom: 30px; left: 30px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        #joy-s { position: absolute; width: 40px; height: 40px; background: rgba(255,255,255,0.4); border-radius: 50%; top: 30px; left: 30px; }
+        #horror { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; justify-content: center; align-items: center; z-index: 100; }
     </style>
 </head>
 <body>
-
     <div id="ui">
-        <div>КИСЛОРОД</div>
-        <div class="bar"><div id="oxygen-level"></div></div>
-        <div style="margin-top: 10px;">РЕСУРСЫ: <span id="res-count">0</span></div>
+        O2 <div class="bar"><div id="ox-lvl"></div></div>
+        <div class="inv">МЕТАЛЛ: <span id="m">0</span> | КВАРЦ: <span id="q">0</span> | ТИТАН: <span id="t">0</span></div>
     </div>
+    <div id="joy-a"><div id="joy-s"></div></div>
+    <div id="craft-btn">КРАФТ</div>
+    <div id="menu">
+        <h3>КРАФТ: БАЛЛОН V2</h3>
+        <p>Нужно: 3 Металла, 1 Кварц</p>
+        <button onclick="doCraft()" id="c-go">СОЗДАТЬ</button>
+        <button onclick="this.parentElement.style.display='none'">ЗАКРЫТЬ</button>
+    </div>
+    <div id="horror"><img src="https://i.imgur.com/83pZ2eM.png" style="width:100%"></div>
+    <canvas id="c"></canvas>
+        <script>
+        const canvas = document.getElementById('c'); const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let p = { x: canvas.width/2, y: 100, s: 20, ox: 100, rate: 0.08, res: {m:0, q:0, t:0}, v2: false };
+        let items = []; let joy = { active: false, mx: 0, my: 0 };
+        let secret = { x: 20, y: canvas.height - 80, s: 50 };
 
-    <div id="joystick-area"><div id="joystick-stick"></div></div>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const oxygenBar = document.getElementById('oxygen-level');
-        const resDisplay = document.getElementById('res-count');
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        let player = { x: canvas.width/2, y: canvas.height/2, size: 20, ox: 100, res: 0 };
-        let items = [];
-        let joystick = { active: false, x: 0, y: 0, moveX: 0, moveY: 0 };
-
-        // Создаем ресурсы (металлолом)
-        function spawnItem() {
-            items.push({ x: Math.random() * canvas.width, y: Math.random() * (canvas.height - 100) + 50, size: 10 });
+        function spawn() {
+            let t = ['m','m','q','t'][Math.floor(Math.random()*4)];
+            items.push({ x: Math.random()*canvas.width, y: Math.random()*(canvas.height-150)+100, t: t });
         }
-        for(let i=0; i<10; i++) spawnItem();
+        for(let i=0; i<15; i++) spawn();
 
-        // Управление (Тачскрин)
-        const area = document.getElementById('joystick-area');
-        const stick = document.getElementById('joystick-stick');
-
-        area.addEventListener('touchstart', (e) => { joystick.active = true; });
+        const area = document.getElementById('joy-a'); const stick = document.getElementById('joy-s');
+        area.addEventListener('touchstart', () => joy.active = true);
         window.addEventListener('touchmove', (e) => {
-            if (!joystick.active) return;
-            let touch = e.touches[0];
-            let rect = area.getBoundingClientRect();
-            let centerX = rect.left + rect.width / 2;
-            let centerY = rect.top + rect.height / 2;
-            
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
-            let dist = Math.min(Math.sqrt(dx*dx + dy*dy), 60);
-            let angle = Math.atan2(dy, dx);
-
-            joystick.moveX = Math.cos(angle) * (dist / 60);
-            joystick.moveY = Math.sin(angle) * (dist / 60);
-
-            stick.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
+            if(!joy.active) return;
+            let t = e.touches[0]; let r = area.getBoundingClientRect();
+            let dx = t.clientX - (r.left + 50), dy = t.clientY - (r.top + 50);
+            let d = Math.min(Math.sqrt(dx*dx + dy*dy), 40); let a = Math.atan2(dy, dx);
+            joy.mx = Math.cos(a) * (d/40); joy.my = Math.sin(a) * (d/40);
+            stick.style.transform = `translate(${Math.cos(a)*d}px, ${Math.sin(a)*d}px)`;
         });
+        window.addEventListener('touchend', () => { joy.active = false; joy.mx = 0; joy.my = 0; stick.style.transform = 'translate(0,0)'; });
 
-        window.addEventListener('touchend', () => {
-            joystick.active = false;
-            joystick.moveX = 0; joystick.moveY = 0;
-            stick.style.transform = `translate(0,0)`;
-        });
-
-        function update() {
-            // Движение
-            player.x += joystick.moveX * 4;
-            player.y += joystick.moveY * 4;
-
-            // Кислород: тратится внизу, пополняется у поверхности (сверху)
-            if (player.y < 50) {
-                player.ox = Math.min(100, player.ox + 1);
-            } else {
-                player.ox -= 0.05;
+        document.getElementById('craft-btn').onclick = () => document.getElementById('menu').style.display = 'block';
+        function doCraft() {
+            if(p.res.m >= 3 && p.res.q >= 1) {
+                p.res.m -= 3; p.res.q -= 1; p.v2 = true; p.rate = 0.04;
+                alert('Баллон V2 готов!'); updateUI();
             }
+        }
 
-            if (player.ox <= 0) {
-                alert("Кислород закончился! Собрано ресурсов: " + player.res);
-                player.ox = 100; player.res = 0; player.x = canvas.width/2; player.y = canvas.height/2;
-            }
-
-            oxygenBar.style.width = player.ox + "%";
-
-            // Сбор ресурсов
-            items.forEach((item, index) => {
-                let dx = player.x - item.x;
-                let dy = player.y - item.y;
-                if (Math.sqrt(dx*dx + dy*dy) < player.size + item.size) {
-                    items.splice(index, 1);
-                    player.res++;
-                    resDisplay.textContent = player.res;
-                    spawnItem();
-                }
-            });
+        function updateUI() {
+            document.getElementById('m').textContent = p.res.m;
+            document.getElementById('q').textContent = p.res.q;
+            document.getElementById('t').textContent = p.res.t;
+            document.getElementById('ox-lvl').style.width = p.ox + '%';
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#001a33'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#004e92'; ctx.fillRect(0,0,canvas.width,70); // Поверхность
+            ctx.fillStyle = '#000'; ctx.fillRect(secret.x, secret.y, secret.s, secret.s); // Пасхалка
 
-            // Поверхность (вода)
-            ctx.fillStyle = "#004e92";
-            ctx.fillRect(0, 0, canvas.width, 50);
-
-            // Ресурсы
-            ctx.fillStyle = "#aaa";
-            items.forEach(item => {
-                ctx.beginPath();
-                ctx.arc(item.x, item.y, item.size, 0, Math.PI*2);
-                ctx.fill();
+            items.forEach((it, i) => {
+                ctx.fillStyle = it.t=='m'?'#aaa':it.t=='q'?'#0f0':'#f00';
+                ctx.beginPath(); ctx.arc(it.x, it.y, 8, 0, 7); ctx.fill();
+                if(Math.hypot(p.x-it.x, p.y-it.y) < 25) { p.res[it.t]++; items.splice(i,1); spawn(); updateUI(); }
             });
 
-            // Игрок (Батискаф)
-            ctx.fillStyle = "#ffcc00";
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.size, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = "#000"; // Иллюминатор
-            ctx.beginPath();
-            ctx.arc(player.x + 5, player.y, 5, 0, Math.PI*2);
-            ctx.fill();
+            p.x = Math.max(p.s, Math.min(canvas.width - p.s, p.x + joy.mx * 5));
+            p.y = Math.max(p.s, Math.min(canvas.height - p.s, p.y + joy.my * 5));
+            p.ox = p.y < 90 ? Math.min(100, p.ox + 1) : p.ox - p.rate;
+            if(p.ox <= 0) { alert('Нет кислорода!'); p.ox=100; p.y=100; }
+            updateUI();
 
-            update();
+            if(p.x < secret.x+50 && p.y > secret.y) {
+                document.getElementById('horror').style.display='flex';
+                setTimeout(()=> location.reload(), 2000); return;
+            }
+
+            ctx.fillStyle = p.v2 ? '#00d4ff' : '#ffcc00';
+            ctx.fillRect(p.x-10, p.y-10, 20, 20);
             requestAnimationFrame(draw);
         }
-
         draw();
     </script>
 </body>
