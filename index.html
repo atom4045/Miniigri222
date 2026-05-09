@@ -1,142 +1,48 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hollow Knight 2D Mobile</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #050508; font-family: 'Georgia', serif; touch-action: none; user-select: none; }
-        canvas { display: block; filter: contrast(1.1) brightness(0.9); }
-        #ui { position: absolute; top: 20px; left: 20px; display: flex; gap: 10px; pointer-events: none; }
-        .mask { width: 30px; height: 35px; background: #fff; clip-path: polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
-        .controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
-        .btn { width: 70px; height: 70px; background: rgba(255,255,255,0.1); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 12px; }
-        .joy-area { width: 120px; height: 120px; background: rgba(255,255,255,0.05); border-radius: 50%; position: relative; }
-        .stick { width: 50px; height: 50px; background: #fff; border-radius: 50%; position: absolute; top: 35px; left: 35px; opacity: 0.6; }
-        #death-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-    </style>
-</head>
-<body>
-    <div id="ui"><div class="mask"></div><div class="mask"></div><div class="mask"></div></div>
-    <div id="death-screen"><h1>ТЫ ПАЛ</h1><button onclick="location.reload()">ВОЗРОДИТЬСЯ</button></div>
-    
-    <div class="controls">
-        <div class="joy-area" id="ja"><div class="stick" id="js"></div></div>
-        <div style="display: flex; gap: 15px;">
-            <div class="btn" id="b-dash">ДЭШ</div>
-            <div class="btn" id="b-atk" style="background: rgba(255,255,255,0.2)">АТАКА</div>
-            <div class="btn" id="b-jump">ПРЫЖОК</div>
-        </div>
-    </div>
-    <canvas id="game"></canvas>
-        <script>
-        const canvas = document.getElementById('game'); const ctx = canvas.getContext('game');
-        const cv = canvas; const cx = canvas.getContext('2d');
-        cv.width = window.innerWidth; cv.height = window.innerHeight;
+-- Добрый скрипт для веселья (Roblox)
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("ВЕСЕЛЫЙ СКРИПТ", "DarkTheme")
 
-        let p = { x: 100, y: 100, w: 30, h: 45, vx: 0, vy: 0, jump: false, side: 1, dash: 0, dashCd: 0, atk: 0, hp: 3 };
-        let platforms = [{x: 0, y: cv.height - 50, w: cv.width * 2, h: 50}, {x: 200, y: cv.height - 150, w: 150, h: 20}, {x: 450, y: cv.height - 250, w: 150, h: 20}];
-        let enemies = [{x: 500, y: cv.height - 80, w: 40, h: 30, vx: 2, alive: true}];
-        let particles = [];
-        let joy = { active: false, x: 0 };
+-- Вкладка "Главная"
+local Main = Window:NewTab("Функции")
+local MainSection = Main:NewSection("Движение и Тапы")
 
-        // Управление
-        const ja = document.getElementById('ja'); const js = document.getElementById('js');
-        ja.addEventListener('touchstart', (e) => { joy.active = true; });
-        window.addEventListener('touchmove', (e) => {
-            if(!joy.active) return;
-            let r = ja.getBoundingClientRect(); let t = e.touches[0];
-            let dx = t.clientX - (r.left + 60);
-            joy.x = Math.max(-1, Math.min(1, dx / 50));
-            js.style.transform = `translateX(${joy.x * 30}px)`;
-            if(joy.x !== 0) p.side = joy.x > 0 ? 1 : -1;
-        });
-        window.addEventListener('touchend', () => { joy.active = false; joy.x = 0; js.style.transform = 'translate(0,0)'; });
+-- 1. Бесконечный прыжок (Auto-Jump)
+local autoJumpEnabled = false
+MainSection:NewToggle("Авто-Прыжок", "Ты будешь прыгать без остановки", function(state)
+    autoJumpEnabled = state
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if autoJumpEnabled then
+            if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+                game.Players.LocalPlayer.Character.Humanoid.Jump = true
+            end
+        end
+    end)
+end)
 
-        document.getElementById('b-jump').ontouchstart = () => { if(!p.jump) { p.vy = -15; p.jump = true; } };
-        document.getElementById('b-dash').ontouchstart = () => { if(p.dashCd <= 0) { p.dash = 15; p.dashCd = 40; } };
-        document.getElementById('b-atk').ontouchstart = () => { if(p.atk <= 0) p.atk = 15; };
+-- 2. Супер Скорость
+MainSection:NewSlider("Скорость бега", "Меняет твою скорость", 250, 16, function(s)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+end)
 
-        function update() {
-            // Движение и физика
-            if(p.dash > 0) { p.vx = p.side * 12; p.dash--; p.vy = 0; } 
-            else { p.vx = joy.x * 6; p.vy += 0.8; }
-            
-            p.x += p.vx; p.y += p.vy;
-            if(p.dashCd > 0) p.dashCd--;
-            if(p.atk > 0) p.atk--;
+-- 3. Авто-Кликер (для симуляторов)
+local autoClickEnabled = false
+MainSection:NewToggle("Авто-Кликер", "Сам жмет на экран", function(state)
+    autoClickEnabled = state
+    spawn(function()
+        while autoClickEnabled do
+            local VirtualUser = game:GetService("VirtualUser")
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton1(Vector2.new(0,0))
+            wait(0.1) -- Скорость клика (чем меньше число, тем быстрее)
+        end
+    end)
+end)
 
-            // Коллизии с полом
-            p.jump = true;
-            platforms.forEach(plat => {
-                if(p.x < plat.x + plat.w && p.x + p.w > plat.x && p.y + p.h > plat.y && p.y + p.h < plat.y + plat.vy + 20) {
-                    p.y = plat.y - p.h; p.vy = 0; p.jump = false;
-                }
-            });
+-- Вкладка "Инфо"
+local Info = Window:NewTab("Инфо")
+local InfoSection = Info:NewSection("Скрипт создан для веселья!")
+InfoSection:NewButton("Удалить меню", "Закрыть чит", function()
+    game:GetService("CoreGui"):FindFirstChild("ВЕСЕЛЫЙ СКРИПТ"):Destroy()
+end)
 
-            // Враги
-            enemies.forEach(en => {
-                if(!en.alive) return;
-                en.x += en.vx;
-                if(en.x > 600 || en.x < 400) en.vx *= -1;
-                // Получение урона игроком
-                if(Math.abs(p.x - en.x) < 30 && Math.abs(p.y - en.y) < 30 && p.dash <= 0) {
-                    p.hp--; p.x -= p.side * 50; if(p.hp <= 0) document.getElementById('death-screen').style.display = 'flex';
-                }
-                // Атака игрока
-                if(p.atk > 0 && Math.abs((p.x + p.side * 40) - en.x) < 40 && Math.abs(p.y - en.y) < 40) {
-                    en.alive = false;
-                    for(let i=0; i<10; i++) particles.push({x: en.x, y: en.y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, t: 30});
-                }
-            });
-        }
-
-        function draw() {
-            update();
-            cx.fillStyle = '#050508'; cx.fillRect(0,0,cv.width,cv.height);
-            
-            // Пыль/Частицы
-            cx.fillStyle = 'rgba(255,255,255,0.1)';
-            if(Math.random() > 0.9) particles.push({x: Math.random()*cv.width, y: Math.random()*cv.height, vx: 0.5, vy: 0.5, t: 100});
-            particles.forEach((pt, i) => {
-                pt.x += pt.vx; pt.y += pt.vy; pt.t--;
-                cx.fillRect(pt.x, pt.y, 2, 2);
-                if(pt.t <= 0) particles.splice(i, 1);
-            });
-
-            // Платформы
-            cx.fillStyle = '#1a1a2e';
-            platforms.forEach(plat => cx.fillRect(plat.x, plat.y, plat.w, plat.h));
-
-            // Враг
-            enemies.forEach(en => {
-                if(!en.alive) return;
-                cx.fillStyle = '#4a0000'; cx.beginPath(); cx.ellipse(en.x + 20, en.y + 15, 20, 15, 0, 0, 7); cx.fill();
-                cx.fillStyle = '#ff0000'; cx.fillRect(en.x + (en.vx>0?30:5), en.y + 10, 5, 5);
-            });
-
-            // Игрок (Рыцарь)
-            cx.save();
-            cx.translate(p.x + p.w/2, p.y + p.h/2);
-            if(p.dash > 0) cx.shadowBlur = 15; cx.shadowColor = "#fff";
-            cx.fillStyle = "#fff"; // Голова
-            cx.beginPath(); cx.ellipse(0, -10, 15, 18, 0, 0, 7); cx.fill();
-            cx.fillStyle = "#000"; // Глаза
-            cx.fillRect(-8, -12, 4, 8); cx.fillRect(4, -12, 4, 8);
-            cx.fillStyle = "#333"; // Плащ
-            cx.fillRect(-12, 5, 24, 20);
-            
-            // Анимация удара
-            if(p.atk > 0) {
-                cx.strokeStyle = "rgba(255,255,255,0.8)"; cx.lineWidth = 3;
-                cx.beginPath(); cx.arc(p.side * 30, 0, 30, -1, 1); cx.stroke();
-            }
-            cx.restore();
-
-            requestAnimationFrame(draw);
-        }
-        draw();
-    </script>
-</body>
-</html>
-
+print("Скрипт успешно запущен в Delta!")
