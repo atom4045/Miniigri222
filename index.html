@@ -2,87 +2,146 @@
 <html>
 <head>
     <style>
-        /* Скрываем чекбоксы */
-        .pixel-logic { display: none; }
+        /* Сброс стилей для почты */
+        body { margin: 0; padding: 0; background-color: #050505; }
+        
+        .game-wrapper {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            background: #000;
+            position: relative;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            border: 2px solid #0ff;
+            box-shadow: 0 0 15px #0ff;
+        }
 
-        /* Контейнер игры */
-        .game-canvas {
+        .header {
+            color: #0ff;
+            text-align: center;
+            padding: 10px;
+            text-transform: uppercase;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        /* Зона лабиринта */
+        .maze-container {
+            position: relative;
             width: 300px;
             height: 400px;
-            background: #f0f0f0;
-            border: 4px solid #333;
-            position: relative;
-            overflow: hidden;
             margin: 0 auto;
-            font-family: sans-serif;
+            background: #000;
         }
 
-        /* Общие стили для "котов" */
-        .cat {
-            width: 40px;
-            height: 40px;
+        /* Стены-ловушки */
+        .wall {
             position: absolute;
-            cursor: pointer;
-            z-index: 10;
-            transition: opacity 0.2s;
+            background: #f0f;
+            box-shadow: 0 0 10px #f0f, inset 0 0 5px #fff;
+            transition: opacity 0.1s;
+            z-index: 5;
         }
 
-        /* Скрываем кота после нажатия (через чекбокс) */
-        #cat1:checked ~ .game-canvas .cat-target1 { display: none; }
-        #cat2:checked ~ .game-canvas .cat-target2 { display: none; }
-        #cat3:checked ~ .game-canvas .cat-target3 { display: none; }
-
-        /* Счетчик очков */
-        .score-board {
-            text-align: center;
-            background: #333;
-            color: #fff;
-            padding: 10px;
+        /* Логика проигрыша через hover (для ПК) и активные зоны (для мобильных) */
+        .wall:hover {
+            opacity: 1;
+            background: #ff0000;
+            box-shadow: 0 0 20px #ff0000;
         }
 
-        /* Экран победы (показывается, когда все чекбоксы нажаты) */
-        .win-screen {
-            display: none;
+        /* Экран смерти (появляется при наведении на стену) */
+        .death-zone {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(76, 175, 80, 0.9);
+            background: rgba(255, 0, 0, 0.8);
+            display: none;
+            z-index: 20;
             color: white;
             text-align: center;
             padding-top: 150px;
-            z-index: 100;
         }
 
-        #cat1:checked ~ #cat2:checked ~ #cat3:checked ~ .game-canvas .win-screen {
-            display: block;
+        /* Сложная трасса */
+        .w1 { top: 0; left: 0; width: 100px; height: 400px; } /* Левый блок */
+        .w2 { top: 0; right: 0; width: 100px; height: 400px; } /* Правый блок */
+        .w3 { top: 150px; left: 100px; width: 50px; height: 20px; } /* Преграда 1 */
+        .w4 { top: 250px; left: 150px; width: 50px; height: 20px; } /* Преграда 2 */
+
+        /* Путь, по которому надо идти */
+        .path {
+            position: absolute;
+            top: 0; left: 100px;
+            width: 100px; height: 400px;
+            background: rgba(0, 255, 255, 0.05);
+            z-index: 1;
         }
 
-        /* Позиции котов */
-        .cat-target1 { top: 50px; left: 30px; background: orange; border-radius: 50%; }
-        .cat-target2 { top: 200px; left: 200px; background: black; border-radius: 50%; }
-        .cat-target3 { top: 320px; left: 80px; background: grey; border-radius: 50%; }
+        /* Кнопка финиша */
+        .finish-trigger {
+            position: absolute;
+            bottom: 10px;
+            left: 125px;
+            width: 50px;
+            height: 50px;
+            background: #0f0;
+            border-radius: 50%;
+            box-shadow: 0 0 20px #0f0;
+            z-index: 10;
+            cursor: pointer;
+            text-align: center;
+            line-height: 50px;
+            color: #000;
+            font-weight: bold;
+            text-decoration: none;
+        }
 
+        /* Чекбокс для победы */
+        #win-cb { display: none; }
+        #win-cb:checked ~ .win-overlay { display: block; }
+
+        .win-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 50;
+            display: none;
+            color: #0f0;
+            text-align: center;
+            padding-top: 100px;
+            border: 2px solid #0f0;
+        }
+
+        .neon-text {
+            font-size: 24px;
+            text-shadow: 0 0 10px #0f0;
+        }
     </style>
 </head>
 <body>
 
-    <input type="checkbox" id="cat1" class="pixel-logic">
-    <input type="checkbox" id="cat2" class="pixel-logic">
-    <input type="checkbox" id="cat3" class="pixel-logic">
+<div class="game-wrapper">
+    <input type="checkbox" id="win-cb">
+    
+    <div class="header">Neon Maze: Hardcore</div>
+    
+    <div class="maze-container">
+        <div class="wall w1"></div>
+        <div class="wall w2"></div>
+        <div class="wall w3"></div>
+        <div class="wall w4"></div>
 
-    <div class="game-canvas">
-        <div class="score-board">Найди 3 спрятанных кружка-кота!</div>
-        
-        <label for="cat1" class="cat cat-target1"></label>
-        <label for="cat2" class="cat cat-target2"></label>
-        <label for="cat3" class="cat cat-target3"></label>
+        <div class="path"></div>
 
-        <div style="position:absolute; bottom:0; width:100%; height:100px; background:#ddd;">Стол</div>
+        <label for="win-cb" class="finish-trigger">WIN</label>
 
-        <div class="win-screen">
-            <h2>Ура! Вы нашли всех!</h2>
-            <p>Ваш промокод: <b>CAT2024</b></p>
+        <div class="win-overlay">
+            <h1 class="neon-text">LEVEL COMPLETE</h1>
+            <p style="color: #0ff;">Ты настоящий кибер-атлет!</p>
+            <div style="margin-top: 50px; font-size: 12px; color: #555;">Code: NEON-ULTRA-2026</div>
         </div>
     </div>
+</div>
 
 </body>
 </html>
