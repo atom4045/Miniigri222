@@ -1,48 +1,88 @@
--- Добрый скрипт для веселья (Roblox)
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("ВЕСЕЛЫЙ СКРИПТ", "DarkTheme")
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        /* Скрываем чекбоксы */
+        .pixel-logic { display: none; }
 
--- Вкладка "Главная"
-local Main = Window:NewTab("Функции")
-local MainSection = Main:NewSection("Движение и Тапы")
+        /* Контейнер игры */
+        .game-canvas {
+            width: 300px;
+            height: 400px;
+            background: #f0f0f0;
+            border: 4px solid #333;
+            position: relative;
+            overflow: hidden;
+            margin: 0 auto;
+            font-family: sans-serif;
+        }
 
--- 1. Бесконечный прыжок (Auto-Jump)
-local autoJumpEnabled = false
-MainSection:NewToggle("Авто-Прыжок", "Ты будешь прыгать без остановки", function(state)
-    autoJumpEnabled = state
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if autoJumpEnabled then
-            if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-                game.Players.LocalPlayer.Character.Humanoid.Jump = true
-            end
-        end
-    end)
-end)
+        /* Общие стили для "котов" */
+        .cat {
+            width: 40px;
+            height: 40px;
+            position: absolute;
+            cursor: pointer;
+            z-index: 10;
+            transition: opacity 0.2s;
+        }
 
--- 2. Супер Скорость
-MainSection:NewSlider("Скорость бега", "Меняет твою скорость", 250, 16, function(s)
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
-end)
+        /* Скрываем кота после нажатия (через чекбокс) */
+        #cat1:checked ~ .game-canvas .cat-target1 { display: none; }
+        #cat2:checked ~ .game-canvas .cat-target2 { display: none; }
+        #cat3:checked ~ .game-canvas .cat-target3 { display: none; }
 
--- 3. Авто-Кликер (для симуляторов)
-local autoClickEnabled = false
-MainSection:NewToggle("Авто-Кликер", "Сам жмет на экран", function(state)
-    autoClickEnabled = state
-    spawn(function()
-        while autoClickEnabled do
-            local VirtualUser = game:GetService("VirtualUser")
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton1(Vector2.new(0,0))
-            wait(0.1) -- Скорость клика (чем меньше число, тем быстрее)
-        end
-    end)
-end)
+        /* Счетчик очков */
+        .score-board {
+            text-align: center;
+            background: #333;
+            color: #fff;
+            padding: 10px;
+        }
 
--- Вкладка "Инфо"
-local Info = Window:NewTab("Инфо")
-local InfoSection = Info:NewSection("Скрипт создан для веселья!")
-InfoSection:NewButton("Удалить меню", "Закрыть чит", function()
-    game:GetService("CoreGui"):FindFirstChild("ВЕСЕЛЫЙ СКРИПТ"):Destroy()
-end)
+        /* Экран победы (показывается, когда все чекбоксы нажаты) */
+        .win-screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            text-align: center;
+            padding-top: 150px;
+            z-index: 100;
+        }
 
-print("Скрипт успешно запущен в Delta!")
+        #cat1:checked ~ #cat2:checked ~ #cat3:checked ~ .game-canvas .win-screen {
+            display: block;
+        }
+
+        /* Позиции котов */
+        .cat-target1 { top: 50px; left: 30px; background: orange; border-radius: 50%; }
+        .cat-target2 { top: 200px; left: 200px; background: black; border-radius: 50%; }
+        .cat-target3 { top: 320px; left: 80px; background: grey; border-radius: 50%; }
+
+    </style>
+</head>
+<body>
+
+    <input type="checkbox" id="cat1" class="pixel-logic">
+    <input type="checkbox" id="cat2" class="pixel-logic">
+    <input type="checkbox" id="cat3" class="pixel-logic">
+
+    <div class="game-canvas">
+        <div class="score-board">Найди 3 спрятанных кружка-кота!</div>
+        
+        <label for="cat1" class="cat cat-target1"></label>
+        <label for="cat2" class="cat cat-target2"></label>
+        <label for="cat3" class="cat cat-target3"></label>
+
+        <div style="position:absolute; bottom:0; width:100%; height:100px; background:#ddd;">Стол</div>
+
+        <div class="win-screen">
+            <h2>Ура! Вы нашли всех!</h2>
+            <p>Ваш промокод: <b>CAT2024</b></p>
+        </div>
+    </div>
+
+</body>
+</html>
